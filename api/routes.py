@@ -106,6 +106,708 @@ async def save_sys_settings(data: dict = Body(...), auth: bool = Depends(verify_
     return {"ok": True}
 
 # ==========================================
+# 🛑 Render Admin Web Panel Dashboard (HTML)
+# ==========================================
+@api_router.get("/admin", response_class=HTMLResponse)
+async def web_admin_panel(auth: bool = Depends(verify_admin)):
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="bn">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Panel - MovieZone BD</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <style>
+            .neon-card {
+                background: rgba(30, 41, 59, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            }
+            .pulse-dot {
+                animation: blink 1.5s infinite;
+            }
+            @keyframes blink {
+                0%, 100% { opacity: 0.2; transform: scale(0.9); }
+                50% { opacity: 1; transform: scale(1.1); }
+            }
+        </style>
+    </head>
+    <body class="bg-gray-950 text-white p-5 font-sans">
+        <div class="max-w-6xl mx-auto">
+            <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-500 mb-6 border-b border-gray-800 pb-3 flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high"></i> Ultimate Admin Dashboard
+            </h1>
+            
+            <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-800 pb-3">
+                <button onclick="switchAdminTab('dashboard')" id="tabBtn-dashboard" class="px-4 py-2 bg-blue-600 rounded text-white font-bold transition">Dashboard & Analytics</button>
+                <button onclick="switchAdminTab('users')" id="tabBtn-users" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition">User Manager</button>
+                <button onclick="switchAdminTab('settings')" id="tabBtn-settings" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition">System Settings</button>
+                <button onclick="switchAdminTab('social')" id="tabBtn-social" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition">Social Links</button>
+                <button onclick="switchAdminTab('movies')" id="tabBtn-movies" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition">Manage Movies</button>
+                <button onclick="switchAdminTab('ads')" id="tabBtn-ads" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition">Ads Manager</button>
+                <button onclick="switchAdminTab('keywords')" id="tabBtn-keywords" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition">Keyword Replies</button>
+                <button onclick="switchAdminTab('requests')" id="tabBtn-requests" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition">User Requests</button>
+            </div>
+
+            <div id="adminTab-dashboard" class="admin-tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="statsBoard">
+                    <div class="neon-card p-5 rounded-2xl border-l-4 border-green-500 flex items-center justify-between shadow-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-green-500/10 p-4 rounded-xl text-green-400 text-2xl relative">
+                                <i class="fa-solid fa-wave-square"></i>
+                                <span class="absolute top-1 right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-gray-950 pulse-dot"></span>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Live Online</p>
+                                <h3 class="text-2xl font-black text-green-400" id="stLiveOnline">0</h3>
+                            </div>
+                        </div>
+                        <span class="text-xs text-green-500/80 font-semibold bg-green-500/10 px-2 py-0.5 rounded-full">App Activity</span>
+                    </div>
+                    
+                    <div class="neon-card p-5 rounded-2xl border-l-4 border-blue-500 flex items-center gap-3 shadow-lg">
+                        <div class="bg-blue-600/10 p-4 rounded-xl text-blue-400 text-2xl"><i class="fa-solid fa-users"></i></div>
+                        <div><p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Users</p><h3 class="text-2xl font-black text-blue-400" id="stUsers">...</h3></div>
+                    </div>
+                    <div class="neon-card p-5 rounded-2xl border-l-4 border-orange-500 flex items-center gap-3 shadow-lg">
+                        <div class="bg-orange-600/10 p-4 rounded-xl text-orange-400 text-2xl"><i class="fa-solid fa-film"></i></div>
+                        <div><p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Uploads</p><h3 class="text-2xl font-black text-orange-400" id="stMovies">...</h3></div>
+                    </div>
+                    <div class="neon-card p-5 rounded-2xl border-l-4 border-purple-500 flex items-center gap-3 shadow-lg">
+                        <div class="bg-purple-600/10 p-4 rounded-xl text-purple-400 text-2xl"><i class="fa-solid fa-eye"></i></div>
+                        <div><p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Views</p><h3 class="text-2xl font-black text-purple-400" id="stViews">...</h3></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="neon-card rounded-2xl p-6 shadow-xl col-span-1">
+                        <h2 class="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> Active Statistics</h2>
+                        <div class="grid grid-cols-1 gap-4">
+                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                                <p class="text-xs text-gray-400 font-bold uppercase">Active Today (DAU)</p>
+                                <h3 id="analyticsDau" class="text-2xl font-bold text-green-400">0</h3>
+                            </div>
+                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                                <p class="text-xs text-gray-400 font-bold uppercase">Active Weekly (WAU)</p>
+                                <h3 id="analyticsWau" class="text-2xl font-bold text-blue-400">0</h3>
+                            </div>
+                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                                <p class="text-xs text-gray-400 font-bold uppercase">Total User Reviews</p>
+                                <h3 id="analyticsReviews" class="text-2xl font-bold text-yellow-400">0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="neon-card rounded-2xl p-6 shadow-xl col-span-2">
+                        <h2 class="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-purple-500"></i> Category Popularity Chart</h2>
+                        <div class="h-64 relative">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="neon-card rounded-2xl p-6 shadow-xl mb-8">
+                    <h2 class="text-lg font-bold text-gray-200 mb-4"><i class="fa-solid fa-star text-yellow-400"></i> Top Rated Movies (By User Reviews)</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-900/80 text-gray-300">
+                                <tr>
+                                    <th class="p-4 rounded-l-lg">Movie Title</th>
+                                    <th class="p-4">Average Rating</th>
+                                    <th class="p-4 rounded-r-lg">Total Reviews</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyticsTopRatedList">
+                                <tr><td colspan="3" class="p-4 text-center text-gray-500">Loading top rated movies...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="adminTab-users" class="admin-tab-content hidden">
+                <div class="neon-card rounded-2xl shadow-xl p-6 mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-xl font-bold text-blue-400 flex items-center gap-2"><i class="fa-solid fa-users-gear"></i> User Manager Panel</h2>
+                        <div class="relative w-full md:w-1/3">
+                            <input type="text" id="userSearchInput" placeholder="🔍 Search UID or Name..." oninput="searchUsers()" class="w-full bg-gray-900 text-white px-4 py-2 rounded-xl border border-gray-800 focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-900/80 text-gray-300">
+                                <tr>
+                                    <th class="p-4 rounded-l-lg">User Info</th>
+                                    <th class="p-4">Points</th>
+                                    <th class="p-4">VIP Status</th>
+                                    <th class="p-4">Invites</th>
+                                    <th class="p-4 rounded-r-lg text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTableBody">
+                                <tr><td colspan="5" class="text-center p-8 text-gray-500">Search for a user by name or UID to begin managing...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="adminTab-settings" class="admin-tab-content hidden">
+                <div class="neon-card rounded-2xl shadow-xl p-6 mb-8">
+                    <h2 class="text-xl font-bold text-gray-200 mb-4"><i class="fa-solid fa-cogs"></i> System Settings</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">VIP Cost (Points)</label>
+                            <input type="number" id="cfgVipCost" class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">VIP Duration (Days)</label>
+                            <input type="number" id="cfgVipDays" class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">Movie Unlock (Hours)</label>
+                            <input type="number" id="cfgUnlockHrs" class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">Ad Interval (Movies Limit)</label>
+                            <input type="number" id="cfgAdInterval" placeholder="e.g. 3 or 4" class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                    </div>
+                    <button onclick="saveSysSettings()" class="mt-4 bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded font-bold transition">Save Settings</button>
+                </div>
+            </div>
+
+            <div id="adminTab-social" class="admin-tab-content hidden">
+                <div class="neon-card rounded-2xl shadow-xl p-6 mb-8">
+                    <h2 class="text-xl font-bold text-blue-400 mb-4"><i class="fa-solid fa-share-nodes"></i> Social Media Links</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">Facebook Group</label>
+                            <input type="url" id="cfgFbGroup" placeholder="https://facebook.com/groups/..." class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">Facebook Page</label>
+                            <input type="url" id="cfgFbPage" placeholder="https://facebook.com/..." class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">YouTube Channel</label>
+                            <input type="url" id="cfgYoutube" placeholder="https://youtube.com/..." class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-gray-400 text-sm font-bold block mb-1">Movie Review Channel</label>
+                            <input type="url" id="cfgReview" placeholder="https://t.me/..." class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none">
+                        </div>
+                    </div>
+                    <button onclick="saveSysSettings()" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-bold transition">Save Social Links</button>
+                </div>
+            </div>
+
+            <div id="adminTab-movies" class="admin-tab-content hidden">
+                <div class="neon-card rounded-2xl shadow-xl p-6 mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-xl font-bold text-gray-200"><i class="fa-solid fa-list-ul"></i> Manage Movies</h2>
+                        <input type="text" id="adminSearch" placeholder="🔍 Search Movies..." class="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none w-full md:w-1/3">
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-700 text-gray-300">
+                                <tr><th class="p-4">Title</th><th class="p-4">Category</th><th class="p-4">Views</th><th class="p-4">Files</th><th class="p-4">Action</th></tr>
+                            </thead>
+                            <tbody id="movieTableBody"><tr><td colspan="5" class="text-center p-8 text-gray-400">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div class="flex justify-center items-center gap-3 mt-6" id="adminPagination"></div>
+                </div>
+            </div>
+
+            <div id="adminTab-ads" class="admin-tab-content hidden">
+                <div class="neon-card rounded-2xl shadow-xl p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-xl font-bold text-yellow-400"><i class="fa-solid fa-bullhorn"></i> Ads Manager (Sponsored)</h2>
+                    </div>
+                    
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-6">
+                        <h3 class="text-gray-300 font-bold mb-3">Create Free Ad (Admin Only)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            <input type="text" id="adTitle" placeholder="Ad Title (e.g. Free Cashout)" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none">
+                            <input type="text" id="adSubtitle" placeholder="Ad Subtitle / Short Description" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none">
+                            <input type="text" id="adLink" placeholder="URL / Link" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none">
+                            <input type="text" id="adImage" placeholder="Image URL (Optional)" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none">
+                        </div>
+                        <button onclick="createAdminAd()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-6 py-2 rounded font-bold whitespace-nowrap">Create Ad</button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-700 text-gray-300">
+                                <tr><th class="p-4">Title</th><th class="p-4">Subtitle</th><th class="p-4">Link</th><th class="p-4">Expires</th><th class="p-4">Action</th></tr>
+                            </thead>
+                            <tbody id="adsTableBody"><tr><td colspan="5" class="text-center p-8 text-gray-400">Loading Ads...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="adminTab-keywords" class="admin-tab-content hidden">
+                <div class="neon-card rounded-2xl border border-gray-700 p-6 shadow mb-8">
+                    <h2 class="text-xl font-bold text-gray-200 mb-4"><i class="fa-solid fa-reply text-green-500"></i> Auto-Reply Keyword Manager</h2>
+                    
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-6">
+                        <h3 class="text-gray-300 font-bold mb-3">Add Custom Keyword Reply</h3>
+                        <div class="flex flex-col md:flex-row gap-3">
+                            <input type="text" id="kwInput" placeholder="Keyword (e.g. pushpa 2)" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none md:w-1/3">
+                            <input type="text" id="kwReplyInput" placeholder="Reply Message" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none flex-grow">
+                            <button onclick="addKeywordReply()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded font-bold whitespace-nowrap">Add Rule</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-700 text-gray-300">
+                                <tr><th class="p-4">Keyword</th><th class="p-4">Reply Message</th><th class="p-4">Action</th></tr>
+                            </thead>
+                            <tbody id="keywordsTableBody">
+                                <tr><td colspan="3" class="p-4 text-center text-gray-500">Loading custom keyword rules...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="adminTab-requests" class="admin-tab-content hidden">
+                <div class="neon-card rounded-2xl border border-gray-700 p-6 shadow mb-8">
+                    <h2 class="text-xl font-bold text-gray-200 mb-4"><i class="fa-solid fa-code-pull-request text-red-500"></i> User Movie Requests Management</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-700 text-gray-300">
+                                <tr>
+                                    <th class="p-4">User Name (UID)</th>
+                                    <th class="p-4">Requested Movie</th>
+                                    <th class="p-4">Priority Status</th>
+                                    <th class="p-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody">
+                                <tr><td colspan="4" class="text-center p-8 text-gray-400">Loading requests...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <script>
+            let currentPage = 1;
+            let searchQuery = "";
+            let searchTimeout = null;
+            let categoryChart = null;
+
+            function switchAdminTab(tabId) {
+                document.querySelectorAll('.admin-tab-content').forEach(content => content.classList.add('hidden'));
+                document.getElementById('adminTab-' + tabId).classList.remove('hidden');
+                
+                document.querySelectorAll('[id^="tabBtn-"]').forEach(btn => {
+                    btn.className = "px-4 py-2 bg-gray-800 hover:bg-gray-750 rounded text-gray-300 font-bold transition";
+                });
+                document.getElementById('tabBtn-' + tabId).className = "px-4 py-2 bg-blue-600 rounded text-white font-bold transition";
+
+                if (tabId === 'dashboard') { loadStats(); loadAnalytics(); }
+                else if (tabId === 'users') { searchUsers(); }
+                else if (tabId === 'settings') { loadSysSettings(); }
+                else if (tabId === 'movies') { loadAdminData(1); }
+                else if (tabId === 'ads') { loadAds(); }
+                else if (tabId === 'keywords') { loadKeywordList(); }
+                else if (tabId === 'requests') { loadAdminRequests(); }
+            }
+
+            async function loadSysSettings() {
+                try {
+                    const res = await fetch('/api/admin/sys_settings');
+                    const data = await res.json();
+                    document.getElementById('cfgVipCost').value = data.vip_cost;
+                    document.getElementById('cfgVipDays').value = data.vip_days;
+                    document.getElementById('cfgUnlockHrs').value = data.unlock_hours;
+                    document.getElementById('cfgAdInterval').value = data.ad_interval || 3;
+                    
+                    if(data.social_links) {
+                        document.getElementById('cfgFbGroup').value = data.social_links.fb_group || '';
+                        document.getElementById('cfgFbPage').value = data.social_links.fb_page || '';
+                        document.getElementById('cfgYoutube').value = data.social_links.youtube || '';
+                        document.getElementById('cfgReview').value = data.social_links.review_channel || '';
+                    }
+                } catch(e) {}
+            }
+
+            async function saveSysSettings() {
+                const payload = {
+                    vip_cost: document.getElementById('cfgVipCost').value,
+                    vip_days: document.getElementById('cfgVipDays').value,
+                    unlock_hours: document.getElementById('cfgUnlockHrs').value,
+                    ad_interval: document.getElementById('cfgAdInterval').value,
+                    social_links: {
+                        fb_group: document.getElementById('cfgFbGroup').value,
+                        fb_page: document.getElementById('cfgFbPage').value,
+                        youtube: document.getElementById('cfgYoutube').value,
+                        review_channel: document.getElementById('cfgReview').value
+                    }
+                };
+                try {
+                    await fetch('/api/admin/sys_settings', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    alert('Settings saved successfully!');
+                } catch(e) {
+                    alert('Failed to save settings.');
+                }
+            }
+
+            async function loadStats() {
+                try {
+                    const res = await fetch('/api/admin/stats');
+                    const data = await res.json();
+                    document.getElementById('stUsers').innerText = data.users;
+                    document.getElementById('stMovies').innerText = data.movies;
+                    document.getElementById('stViews').innerText = data.views;
+                } catch(e) {}
+            }
+
+            async function loadAnalytics() {
+                try {
+                    const res = await fetch('/api/admin/analytics');
+                    const data = await res.json();
+                    
+                    document.getElementById('stLiveOnline').innerText = data.live_online;
+                    document.getElementById('analyticsDau').innerText = data.active_today;
+                    document.getElementById('analyticsWau').innerText = data.active_week;
+                    document.getElementById('analyticsReviews').innerText = data.total_reviews;
+
+                    const labels = data.category_stats.map(c => c._id);
+                    const counts = data.category_stats.map(c => c.total_views);
+
+                    if (categoryChart) categoryChart.destroy();
+                    const ctx = document.getElementById('categoryChart').getContext('2d');
+                    categoryChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Views',
+                                data: counts,
+                                backgroundColor: 'rgba(139, 92, 246, 0.5)',
+                                borderColor: 'rgba(139, 92, 246, 1)',
+                                borderWidth: 1,
+                                borderRadius: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+
+                    let ratedHtml = '';
+                    data.top_rated.forEach(m => {
+                        ratedHtml += `
+                        <tr class="border-b border-gray-800 hover:bg-gray-900/40">
+                            <td class="p-4 font-bold text-yellow-400">${m._id}</td>
+                            <td class="p-4 font-semibold"><i class="fa-solid fa-star text-yellow-400 mr-1"></i> ${m.avg_rating.toFixed(1)} / 5</td>
+                            <td class="p-4 text-gray-400">${m.total_reviews} Reviews</td>
+                        </tr>`;
+                    });
+                    document.getElementById('analyticsTopRatedList').innerHTML = ratedHtml || '<tr><td colspan="3" class="p-4 text-center text-gray-500">No movie reviews logged yet.</td></tr>';
+
+                } catch(e) { console.log(e); }
+            }
+
+            async function searchUsers() {
+                const query = document.getElementById('userSearchInput').value.trim();
+                const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                let html = '';
+                
+                if (data.users.length === 0) {
+                    html = '<tr><td colspan="5" class="text-center p-8 text-gray-500">No matching users found...</td></tr>';
+                } else {
+                    data.users.forEach(u => {
+                        const vipBadge = u.is_vip ? '<span class="px-2 py-0.5 text-xs bg-yellow-500/10 text-yellow-400 font-bold border border-yellow-500/20 rounded-full">👑 VIP</span>' : '<span class="px-2 py-0.5 text-xs bg-gray-500/10 text-gray-400 rounded-full">Free</span>';
+                        const banBtn = u.is_banned ? 
+                            `<button onclick="userAction(${u.user_id}, 'unban')" class="bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 px-3 py-1 rounded-xl transition font-semibold text-xs">Unban</button>` :
+                            `<button onclick="userAction(${u.user_id}, 'ban')" class="bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 px-3 py-1 rounded-xl transition font-semibold text-xs">Ban User</button>`;
+
+                        html += `
+                        <tr class="border-b border-gray-800 hover:bg-gray-900/40">
+                            <td class="p-4">
+                                <span class="font-bold block">${u.first_name}</span>
+                                <span class="text-xs text-gray-500 block">${u.user_id}</span>
+                            </td>
+                            <td class="p-4 text-blue-400 font-semibold">${u.coins} Gems</td>
+                            <td class="p-4">${vipBadge}</td>
+                            <td class="p-4 text-gray-400">${u.refer_count} referrals</td>
+                            <td class="p-4 text-right flex gap-2 justify-end">
+                                <button onclick="promptCoins(${u.user_id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-xl text-xs transition">Gems</button>
+                                <button onclick="promptVip(${u.user_id})" class="bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-400 border border-yellow-500/20 px-2 py-1 rounded-xl text-xs transition">VIP</button>
+                                ${banBtn}
+                            </td>
+                        </tr>`;
+                    });
+                }
+                document.getElementById('userTableBody').innerHTML = html;
+            }
+
+            async function userAction(userId, action, value = 0) {
+                const res = await fetch('/api/admin/users/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: userId, action: action, value: value })
+                });
+                const d = await res.json();
+                if (d.ok) searchUsers();
+            }
+
+            function promptCoins(userId) {
+                const amount = prompt("Enter amount of points to ADD (positive number) or REMOVE (negative number):", "100");
+                if (amount && !isNaN(amount)) {
+                    const val = parseInt(amount);
+                    if (val >= 0) userAction(userId, 'add_coins', val);
+                    else userAction(userId, 'remove_coins', Math.abs(val));
+                }
+            }
+
+            function promptVip(userId) {
+                const days = prompt("Enter days of VIP membership to ADD (Type 0 to remove VIP):", "30");
+                if (days !== null && !isNaN(days)) {
+                    const val = parseInt(days);
+                    if (val === 0) userAction(userId, 'remove_vip');
+                    else userAction(userId, 'add_vip', val);
+                }
+            }
+
+            document.getElementById('adminSearch').addEventListener('input', function(e) {
+                clearTimeout(searchTimeout);
+                searchQuery = e.target.value.trim();
+                searchTimeout = setTimeout(() => loadAdminData(1), 500);
+            });
+
+            async function loadAdminData(page = 1) {
+                currentPage = page;
+                document.getElementById('movieTableBody').innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">Loading...</td></tr>';
+                const res = await fetch(`/api/admin/data?page=${currentPage}&q=${encodeURIComponent(searchQuery)}`); 
+                const data = await res.json();
+                
+                let html = '';
+                if(data.movies.length === 0) {
+                    html = '<tr><td colspan="5" class="text-center p-8 text-gray-400">No movies found.</td></tr>';
+                } else {
+                    data.movies.forEach(m => {
+                        let catHtml = m.categories && m.categories.length > 0 
+                            ? m.categories.map(c => `<span class="bg-gray-750 px-2 py-1 rounded text-xs border border-gray-600">${c}</span>`).join(' ') 
+                            : '<span class="text-gray-500">None</span>';
+                        
+                        html += `<tr class="border-b border-gray-700 hover:bg-gray-750">
+                            <td class="p-4 font-medium">${m._id}</td>
+                            <td class="p-4">${catHtml}</td>
+                            <td class="p-4 text-gray-400">${m.clicks} Views</td>
+                            <td class="p-4 text-green-400 font-bold">${m.file_count}</td>
+                            <td class="p-4 flex gap-2">
+                                <button onclick="editCategory('${encodeURIComponent(m._id)}', '${encodeURIComponent(JSON.stringify(m.categories || []))}')" class="text-blue-400 bg-blue-900 px-3 py-1 rounded transition hover:bg-blue-800">Edit Cat.</button>
+                                <button onclick="addViews('${encodeURIComponent(m._id)}')" class="text-yellow-400 bg-yellow-900 px-3 py-1 rounded transition hover:bg-yellow-800">Boost</button>
+                                <button onclick="deleteMovie('${encodeURIComponent(m._id)}')" class="text-red-400 bg-red-900 px-3 py-1 rounded transition hover:bg-red-800">Delete</button>
+                            </td>
+                        </tr>`;
+                    });
+                }
+                document.getElementById('movieTableBody').innerHTML = html;
+
+                let pageHtml = "";
+                if(data.total_pages > 1) {
+                    pageHtml += `<button ${currentPage === 1 ? 'disabled class="px-4 py-2 bg-gray-700 text-gray-500 rounded"' : 'class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white" onclick="loadAdminData(' + (currentPage - 1) + ')"'}>Prev</button>`;
+                    pageHtml += `<span class="px-4 py-2 font-bold">Page ${currentPage} of ${data.total_pages}</span>`;
+                    pageHtml += `<button ${currentPage === data.total_pages ? 'disabled class="px-4 py-2 bg-gray-700 text-gray-500 rounded"' : 'class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white" onclick="loadAdminData(' + (currentPage + 1) + ')"'}>Next</button>`;
+                }
+                document.getElementById('adminPagination').innerHTML = pageHtml;
+            }
+
+            async function editCategory(title, currentCatsJson) {
+                let currentCats = [];
+                try { currentCats = JSON.parse(decodeURIComponent(currentCatsJson)); } catch(e) {}
+                let currentCatStr = currentCats.join(", ");
+                
+                let newCatStr = prompt("Edit Categories (comma separated):", currentCatStr);
+                if(newCatStr !== null) {
+                    let newCategories = newCatStr.split(",").map(c => c.trim()).filter(c => c !== "");
+                    await fetch('/api/admin/movie/' + title, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({new_categories: newCategories}) });
+                    loadAdminData(currentPage);
+                }
+            }
+
+            async function deleteMovie(title) {
+                if(!confirm('Are you sure you want to delete ALL files for this movie?')) return;
+                await fetch('/api/admin/movie/' + title, {method: 'DELETE'}); 
+                loadAdminData(currentPage); loadStats();
+            }
+
+            async function addViews(title) {
+                let amount = prompt("How many views to add?", "1000");
+                if(amount && !isNaN(amount)) {
+                    await fetch('/api/admin/movie/' + title, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({add_clicks: parseInt(amount)}) });
+                    loadAdminData(currentPage); loadStats();
+                }
+            }
+
+            async function loadAds() {
+                const res = await fetch('/api/admin/ads_list');
+                const data = await res.json();
+                let html = '';
+                data.ads.forEach(ad => {
+                    let exp = new Date(ad.expires_at).toLocaleString();
+                    let subText = ad.subtitle || "N/A";
+                    html += `<tr class="border-b border-gray-700 hover:bg-gray-750">
+                        <td class="p-4 font-bold text-yellow-400">${ad.title}</td>
+                        <td class="p-4 text-gray-300">${subText}</td>
+                        <td class="p-4"><a href="${ad.link}" target="_blank" class="text-blue-400 underline">Link</a></td>
+                        <td class="p-4">${exp}</td>
+                        <td class="p-4"><button onclick="deleteAd('${ad._id}')" class="bg-red-600 text-white px-3 py-1 rounded">Delete</button></td>
+                    </tr>`;
+                });
+                document.getElementById('adsTableBody').innerHTML = html || '<tr><td colspan="5" class="text-center p-8 text-gray-400">No active ads.</td></tr>';
+            }
+
+            async function createAdminAd() {
+                const payload = {
+                    title: document.getElementById('adTitle').value,
+                    subtitle: document.getElementById('adSubtitle').value || "দেরি না করে এখনো সবাই নিয়ে নিন",
+                    link: document.getElementById('adLink').value,
+                    image_url: document.getElementById('adImage').value
+                };
+                await fetch('/api/admin/ads/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                alert('Ad created successfully!');
+                loadAds();
+            }
+
+            async function deleteAd(id) {
+                if(confirm('Delete this ad?')) {
+                    await fetch('/api/admin/ads/' + id, {method: 'DELETE'});
+                    loadAds();
+                }
+            }
+
+            async function loadKeywordList() {
+                try {
+                    const res = await fetch('/api/admin/keywords');
+                    const data = await res.json();
+                    let html = '';
+                    data.keywords.forEach(kw => {
+                        html += `
+                        <tr class="border-b border-gray-700 hover:bg-gray-750">
+                            <td class="p-4 font-bold text-green-400">${kw.keyword}</td>
+                            <td class="p-4 text-gray-300 whitespace-pre-wrap">${kw.reply_message}</td>
+                            <td class="p-4"><button onclick="deleteKeyword('${kw.keyword}')" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded">Delete</button></td>
+                        </tr>`;
+                    });
+                    document.getElementById('keywordsTableBody').innerHTML = html || '<tr><td colspan="3" class="p-4 text-center text-gray-500">No keyword responses.</td></tr>';
+                } catch(e) {}
+            }
+
+            async function addKeywordReply() {
+                const keyword = document.getElementById('kwInput').value.trim();
+                const reply = document.getElementById('kwReplyInput').value.trim();
+                if(!keyword || !reply) { alert('Enter Keyword and reply!'); return; }
+                
+                await fetch('/api/admin/keywords', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ keyword: keyword, reply_message: reply })
+                });
+                document.getElementById('kwInput').value = '';
+                document.getElementById('kwReplyInput').value = '';
+                loadKeywordList();
+            }
+
+            async function deleteKeyword(keyword) {
+                if(confirm(`Delete response rule for keyword "${keyword}"?`)) {
+                    await fetch(`/api/admin/keywords/${encodeURIComponent(keyword)}`, { method: 'DELETE' });
+                    loadKeywordList();
+                }
+            }
+
+            async function loadAdminRequests() {
+                try {
+                    const res = await fetch('/api/admin/requests');
+                    const data = await res.json();
+                    let html = '';
+                    data.requests.forEach(req => {
+                        let priorityClass = req.is_vip ? "bg-yellow-900 text-yellow-300 border-yellow-700" : "bg-gray-800 text-gray-400 border-gray-700";
+                        let selectPending = req.status === 'pending' ? 'selected' : '';
+                        let selectProcessing = req.status === 'processing' ? 'selected' : '';
+                        let selectUploaded = req.status === 'uploaded' ? 'selected' : '';
+                        
+                        html += `
+                        <tr class="border-b border-gray-700 hover:bg-gray-750">
+                            <td class="p-4">
+                                <span class="font-bold text-white block">${req.uname}</span>
+                                <span class="text-xs text-gray-500 block">${req.user_id}</span>
+                            </td>
+                            <td class="p-4 font-bold text-blue-400">${req.movie}</td>
+                            <td class="p-4"><span class="px-2 py-1 text-xs font-bold border rounded ${priorityClass}">${req.is_vip ? "⭐ VIP Priority" : "Free"}</span></td>
+                            <td class="p-4 flex gap-2 items-center">
+                                <select onchange="updateRequestStatus('${req._id}', this.value)" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white">
+                                    <option value="pending" ${selectPending}>⏳ Pending</option>
+                                    <option value="processing" ${selectProcessing}>⚙️ Processing</option>
+                                    <option value="uploaded" ${selectUploaded}>✅ Uploaded</option>
+                                </select>
+                                <button onclick="deleteRequest('${req._id}')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>`;
+                    });
+                    document.getElementById('requestsTableBody').innerHTML = html || '<tr><td colspan="4" class="text-center p-8 text-gray-400">No requests log.</td></tr>';
+                } catch(e) {}
+            }
+
+            async function updateRequestStatus(id, newStatus) {
+                await fetch(`/api/admin/requests/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({status: newStatus})
+                });
+                loadAdminRequests();
+            }
+
+            async function deleteRequest(id) {
+                if(confirm('Delete this request entry?')) {
+                    await fetch(`/api/admin/requests/${id}`, { method: 'DELETE' });
+                    loadAdminRequests();
+                }
+            }
+            
+            loadSysSettings(); loadStats(); loadAnalytics();
+            
+            setInterval(() => {
+                const activeTab = document.querySelector('.admin-tab-content:not(.hidden)');
+                if (activeTab && activeTab.id === 'adminTab-dashboard') {
+                    loadStats();
+                    loadAnalytics();
+                }
+            }, 10000);
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+# ==========================================
 # 🛑 Render Web UI (Frontend Page)
 # ==========================================
 @api_router.get("/", response_class=HTMLResponse)

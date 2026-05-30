@@ -64,15 +64,15 @@ logger = logging.getLogger(__name__)
 # 1. Configuration & Global Variables
 # ==========================================
 # ⚠️ নিচের ভ্যারিয়েবলগুলোতে আপনার নিজস্ব ভ্যালুগুলো বসিয়ে দিন:
-TOKEN = "YOUR_BOT_TOKEN_HERE"                  # এখানে আপনার Bot Token বসান
-API_ID = 12345678                              # এখানে আপনার API ID (integer) বসান
-API_HASH = "YOUR_API_HASH_HERE"                # এখানে আপনার API Hash বসান
+TOKEN = "8228670087:AAGe7CrOi1mWnQPzv9k4zK4qenrRJOm18Qs"                  # এখানে আপনার Bot Token বসান
+API_ID = 19234664                              # এখানে আপনার API ID (integer) বসান
+API_HASH = "29c2f3b3d115cf1b0231d816deb271f5"                # এখানে আপনার API Hash বসান
 SESSION_STRING = ""                            # পাইরোগ্রাম সেশন স্ট্রিং থাকলে এখানে বসান (ঐচ্ছিক)
-MONGO_URL = "YOUR_MONGO_URI_HERE"              # এখানে আপনার MongoDB Connection URI বসান
-OWNER_ID = 123456789                           # এখানে আপনার Telegram Admin ID (integer) বসান
-CHANNEL_ID = "-100xxxxxxxxx"                   # এখানে আপনার মূল চ্যানেলের ID বসান
+MONGO_URL = "mongodb+srv://canamid247:canamid247@cluster0.ahmfr1p.mongodb.net/?appName=Cluster0"              # এখানে আপনার MongoDB Connection URI বসান
+OWNER_ID = 8058281460                           # এখানে আপনার Telegram Admin ID (integer) বসান
+CHANNEL_ID = "-1002376137081"                   # এখানে আপনার মূল চ্যানেলের ID বসান
 ADMIN_PASS = "admin123"                        # ওয়েব প্যানেলের অ্যাডমিন পাসওয়ার্ড
-BOT_USERNAME = "BDMovieZoneBot"                # আপনার বটের ইউজারনেম
+BOT_USERNAME = "MoviesLinkBD_Bot"                # আপনার বটের ইউজারনেম
 
 # APP_URL আপনার অনুরোধ অনুযায়ী এনভায়রনমেন্ট ভ্যারিয়েবল হিসেবে রাখা হয়েছে
 APP_URL = os.getenv("APP_URL")
@@ -80,7 +80,7 @@ APP_URL = os.getenv("APP_URL")
 TUTORIAL_LINK = "https://t.me/HowtoDowlnoad/41"
 REQUEST_LINK = "https://t.me/+dld6-uEkdvQ5Yjg1"
 
-_db_ch = "-100xxxxxxxxx"                       # এখানে আপনার Database Channel ID (স্ট্রিং হিসেবে) বসান
+_db_ch = "-1003983546270"                       # এখানে আপনার Database Channel ID (স্ট্রিং হিসেবে) বসান
 DB_CHANNEL_ID = int(_db_ch) if _db_ch.lstrip('-').isdigit() else None
 
 # পোর্ট সেটিংস

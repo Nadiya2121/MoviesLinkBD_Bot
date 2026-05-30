@@ -2,6 +2,7 @@
 import datetime
 import asyncio
 import random
+from bson import ObjectId
 from aiogram import types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -41,6 +42,9 @@ class AdminStates(StatesGroup):
     waiting_for_bulk_quality = State()
     waiting_for_bulk_files = State()
 
+# ==========================================
+# 🛑 PREMIUM START COMMAND WITH PROFILE CARD
+# ==========================================
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message, state: FSMContext):
     uid = message.from_user.id
@@ -51,6 +55,7 @@ async def start_cmd(message: types.Message, state: FSMContext):
     now = datetime.datetime.utcnow()
     user = await db.users.find_one({"user_id": uid})
     
+    # নতুন ইউজার রেজিস্ট্রেশন এবং রেফারেল হ্যান্ডলিং
     if not user:
         args = message.text.split(" ")
         if len(args) > 1 and args[1].startswith("ref_"):
@@ -58,24 +63,43 @@ async def start_cmd(message: types.Message, state: FSMContext):
                 referrer_id = int(args[1].split("_")[1])
                 if referrer_id != uid:
                     await db.users.update_one({"user_id": referrer_id}, {"$inc": {"refer_count": 1, "coins": 10}})
-                    try: await bot.send_message(referrer_id, "🎉 <b>Congratulations!</b> You got <b>10 Points</b> for a new referral!", parse_mode="HTML")
+                    try: 
+                        await bot.send_message(referrer_id, "🎉 <b>Congratulations!</b> You got <b>10 Points</b> for a new referral!", parse_mode="HTML")
                     except: pass
             except Exception: pass
 
         user_name = message.from_user.first_name or "User"
-        await db.users.insert_one({
+        user = {
             "user_id": uid, "first_name": user_name, "joined_at": now, "refer_count": 0, "coins": 0, "vip_until": now - datetime.timedelta(days=1), "last_active": now
-        })
+        }
+        await db.users.insert_one(user)
     else:
         await db.users.update_one({"user_id": uid}, {"$set": {"last_active": now}})
     
-    kb = [[types.InlineKeyboardButton(text="🎬 Watch Now", web_app=types.WebAppInfo(url=APP_URL))]]
+    # মেম্বারশিপ ও Gems এর ডাইনামিক স্ট্যাটাস
+    is_vip = user.get("vip_until", now) > now
+    coins = user.get("coins", 0)
+    vip_status = "👑 Premium VIP" if is_vip else "⚡ Free User"
+    
+    # প্রিমিয়াম বাটন লেআউট
+    kb = [
+        [types.InlineKeyboardButton(text="🎬 Open Movie App (অ্যাপ খুলুন)", web_app=types.WebAppInfo(url=APP_URL))],
+        [
+            types.InlineKeyboardButton(text="কিভাবে ডাউনলোড করবেন ❓", url=TUTORIAL_LINK),
+            types.InlineKeyboardButton(text="মুভি রিকোয়েস্ট ♻️", url=REQUEST_LINK)
+        ],
+        [types.InlineKeyboardButton(text="🎁 Refer & Earn (ফ্রি Gems)", callback_data="refer_info_start")]
+    ]
     markup = types.InlineKeyboardMarkup(inline_keyboard=kb)
     
+    # ১৬:৯ রেশিওর ওয়েলকাম ইমেজের লিংক (আপনার ছবির লিংক বা ফাইল আইডি দিয়ে পরিবর্তন করতে পারেন)
+    WELCOME_BANNER = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1025&auto=format&fit=crop"
+
     if uid in admin_cache:
+        # অ্যাডমিনদের জন্য মেসেজ
         text = (
             "👋 <b>হ্যালো অ্যাডমিন!</b>\n\n"
-            "⚙️ <b>কমান্ড:</b>\n"
+            "⚙️ <b>কমান্ড লিস্ট:</b>\n"
             "🔸 অটো আপলোড: <code>/autoupload on/off</code>\n"
             "🔸 অ্যাডমিন প্যানেল: <code>/addadmin ID</code> | <code>/deladmin ID</code> | <code>/adminlist</code>\n"
             "🔸 ডাইরেক্ট লিংক: <code>/addlink লিংক</code> | <code>/dellink লিংক</code> | <code>/seelinks</code>\n"
@@ -92,11 +116,46 @@ async def start_cmd(message: types.Message, state: FSMContext):
             "<i>লগিন: admin / admin123</i>\n\n"
             "📥 <b>মুভি অ্যাড করতে প্রথমে ভিডিও বা ডকুমেন্ট ফাইল পাঠান।</b>"
         )
-    else: 
-        text = f"👋 <b>Welcome {message.from_user.first_name or 'User'}!</b>\n\nClick the button below to browse movies."
-        
-    await message.answer(text, reply_markup=markup, parse_mode="HTML", disable_web_page_preview=True)
+        try:
+            await message.answer_photo(photo=WELCOME_BANNER, caption=text, reply_markup=markup, parse_mode="HTML")
+        except Exception:
+            await message.answer(text, reply_markup=markup, parse_mode="HTML")
+    else:
+        # সাধারণ ইউজারদের জন্য প্রিমিয়াম ডাইনামিক প্রোফাইল মেসেজ
+        user_name = message.from_user.first_name or "User"
+        text = (
+            f"👋 <b>Welcome, {user_name}!</b>\n"
+            f"আমাদের মুভি ও ওয়েব সিরিজ মিনি-অ্যাপ বটে আপনাকে স্বাগতম।\n\n"
+            f"📊 <b>আপনার প্রোফাইল তথ্য:</b>\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>নাম:</b> {user_name}\n"
+            f"🆔 <b>ইউজার আইডি:</b> <code>{uid}</code>\n"
+            f"💎 <b>আপনার Gems:</b> <code>{coins} Gems</code>\n"
+            f"👑 <b>মেম্বারশিপ:</b> <b>{vip_status}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━\n\n"
+            f"🍿 <i>নিচের বাটনে ক্লিক করে সরাসরি আমাদের মিনি-অ্যাপ থেকে ১ ক্লিকে হাই-স্পিডে মুভি এবং ওয়েব সিরিজ ডাউনলোড করুন বা সরাসরি বটেই প্লে করুন!</i>"
+        )
+        try:
+            await message.answer_photo(photo=WELCOME_BANNER, caption=text, reply_markup=markup, parse_mode="HTML")
+        except Exception:
+            await message.answer(text, reply_markup=markup, parse_mode="HTML")
 
+# রেফারেল বাটন ইনফো হ্যান্ডলার
+@dp.callback_query(F.data == "refer_info_start")
+async def refer_info_start_cb(c: types.CallbackQuery):
+    ref_link = f"https://t.me/{BOT_USERNAME}?start=ref_{c.from_user.id}"
+    text = (
+        "🎁 <b>Refer & Earn (ফ্রি Gems সংগ্রহ করুন):</b>\n\n"
+        "আপনার বন্ধুদের সাথে নিচের লিংকটি শেয়ার করুন। আপনার লিংকে ক্লিক করে কেউ বটটি স্টার্ট করলেই আপনি পাবেন সম্পূর্ণ ফ্রিতে <b>১০ Gems</b>!\n\n"
+        f"🔗 <b>আপনার ইনভাইট লিংক:</b>\n<code>{ref_link}</code>\n\n"
+        "<i>পয়েন্ট জমিয়ে আপনি বিজ্ঞাপন ছাড়াই সরাসরি প্রিমিয়াম মেম্বারশিপ আনলক করতে পারবেন।</i>"
+    )
+    await c.message.answer(text, parse_mode="HTML")
+    await c.answer()
+
+# ==========================================
+# 🛑 OTHER ADMIN COMMANDS
+# ==========================================
 @dp.message(Command("setadtime"))
 async def set_ad_time(m: types.Message):
     if m.from_user.id not in admin_cache: return
@@ -404,6 +463,9 @@ async def del_keyword_reply(m: types.Message):
     except Exception:
         await m.answer("⚠️ সঠিক নিয়ম: <code>/delreply কিওয়ার্ড</code>", parse_mode="HTML")
 
+# ==========================================
+# 🛑 SMART AUTO-RESPONDER & ADMIN FORWARDING
+# ==========================================
 @dp.message(lambda m: m.chat.type == "private" and m.from_user.id not in admin_cache and (m.text is None or not m.text.startswith("/")))
 async def forward_to_admin(m: types.Message):
     user_text = m.text.strip() if m.text else ""
@@ -469,6 +531,9 @@ async def forward_to_admin(m: types.Message):
                 })
             except Exception: pass
 
+# ==========================================
+# 🛑 MOVIE & EPISODE MANUAL UPLOAD LOGIC
+# ==========================================
 @dp.message(StateFilter(None), F.content_type.in_({'video', 'document'}), lambda m: m.from_user.id in admin_cache)
 async def receive_movie_file(m: types.Message, state: FSMContext):
     config = await db.settings.find_one({"id": "auto_upload_mode"})
@@ -573,6 +638,9 @@ async def finalize_new_episode(m: types.Message, state: FSMContext):
             await bot.send_photo(chat_id=CHANNEL_ID, photo=photo_id, caption=caption, parse_mode="HTML", reply_markup=markup)
         except Exception: pass
 
+# ==========================================
+# 🛑 BULK UPLOAD MODULE FOR WEB SERIES
+# ==========================================
 @dp.message(Command("bulk"), lambda m: m.from_user.id in admin_cache)
 async def init_bulk_upload_cmd(m: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_bulk_series_search)
@@ -588,7 +656,7 @@ async def search_series_for_bulk(m: types.Message, state: FSMContext):
     ]
     results = await db.movies.aggregate(pipeline).to_list(10)
 
-    if not results: 
+    if not Guide := results: 
         return await m.answer("⚠️ এই নামে কোনো সিরিজ পাওয়া যায়নি! আবার সঠিক নাম লিখে পাঠান।")
 
     await state.update_data(search_results=results)
@@ -749,6 +817,9 @@ async def finalize_bulk_upload(c: types.CallbackQuery, state: FSMContext):
             await bot.send_photo(chat_id=CHANNEL_ID, photo=photo_id, caption=caption, parse_mode="HTML", reply_markup=markup)
         except Exception: pass
 
+# ==========================================
+# 🛑 IMAGE PROCESSING STATE HANDLER
+# ==========================================
 @dp.message(AdminStates.waiting_for_photo, F.photo)
 async def receive_movie_photo(m: types.Message, state: FSMContext):
     status_msg = await m.answer("⏳ <b>ছবিটি চ্যাপ্টা (16:9) করা হচ্ছে...</b>", parse_mode="HTML")
@@ -776,7 +847,7 @@ async def receive_movie_photo(m: types.Message, state: FSMContext):
         sent_photo = await m.answer_photo(FSInputFile(temp_out), caption="✅ <b>পোস্টার রেডি!</b>\nএবার <b>টাইটেল (নাম)</b> লিখে পাঠান।", parse_mode="HTML")
         if not DB_CHANNEL_ID: photo_id = sent_photo.photo[-1].file_id
     else:
-        await m.answer("✅ পোস্টার পেয়েছি! এবার <b>টাইটেল (নাম)</b> লিখে পাঠান।", parse_mode="HTML")
+        await m.answer("✅ পোস্টার পেয়েছি! এবার <b>টাইটেল (নাম)</b> লিখে পাঠান Regel।", parse_mode="HTML")
         
     await state.update_data(photo_id=photo_id, db_photo_id=db_photo_id)
     await state.set_state(AdminStates.waiting_for_title)
@@ -835,6 +906,9 @@ async def receive_movie_category(m: types.Message, state: FSMContext):
             await bot.send_photo(chat_id=CHANNEL_ID, photo=photo_id, caption=caption, parse_mode="HTML", reply_markup=markup)
         except Exception: pass
 
+# ==========================================
+# 🛑 CALLBACK QUERY HANDLERS (TRX & REPLY)
+# ==========================================
 @dp.callback_query(F.data.startswith("trx_"))
 async def handle_trx_approval(c: types.CallbackQuery):
     if c.from_user.id not in admin_cache: return

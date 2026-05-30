@@ -1,3 +1,4 @@
+# upcoming_router.py
 import os
 import datetime
 import asyncio
@@ -7,6 +8,10 @@ from fastapi import APIRouter, Body
 from fastapi.responses import HTMLResponse
 from bson import ObjectId
 from cachetools import TTLCache
+
+# আমাদের কনফিগারেশন ও হেল্পার ফাইল থেকে গ্লোবাল অবজেক্ট ইম্পোর্ট করা হলো
+from config import db, admin_cache
+from helpers import validate_tg_data
 
 upcoming_router = APIRouter()
 
@@ -87,8 +92,6 @@ async def upcoming_page():
 
 @upcoming_router.get("/api/upcoming/movies")
 async def get_upcoming_movies():
-    from main import db
-
     tmdb_movies = await fetch_tmdb_upcoming()
     
     today_str = datetime.datetime.utcnow().strftime("%Y-%m-%d")
@@ -111,25 +114,17 @@ async def get_upcoming_movies():
     
     return {"movies": all_movies}
 
-# 🛑 UPDATE: ডাটাবেসে সরাসরি ইমেজ সেভ করার সিস্টেম
+# 🛑 UPDATE: ডাইনামিক ক্যাশ ও সিকিউর অ্যাডমিন চেক
 @upcoming_router.post("/api/upcoming/custom")
 async def add_custom_upcoming(data: dict = Body(...)):
-    from main import db, validate_tg_data
-
     uid = int(data.get("uid", 0))
     init_data = data.get("initData", "")
     
     if not validate_tg_data(init_data):
         return {"ok": False, "msg": "Session Expired! Please reopen bot."}
         
-    OWNER_ID = int(os.getenv("ADMIN_ID", "0"))
-    is_admin = (uid == OWNER_ID)
-    if not is_admin:
-        admin_doc = await db.admins.find_one({"user_id": uid})
-        if admin_doc:
-            is_admin = True
-            
-    if not is_admin:
+    # গ্লোবাল admin_cache ব্যবহার করে চোখের পলকে অ্যাডমিন ভেরিফিকেশন
+    if uid not in admin_cache:
         return {"ok": False, "msg": "You do not have Admin permissions!"}
 
     await db.upcoming_custom.insert_one({
@@ -143,22 +138,13 @@ async def add_custom_upcoming(data: dict = Body(...)):
 
 @upcoming_router.delete("/api/upcoming/custom/{movie_id}")
 async def delete_custom_upcoming(movie_id: str, data: dict = Body(...)):
-    from main import db, validate_tg_data
-
     uid = int(data.get("uid", 0))
     init_data = data.get("initData", "")
     
     if not validate_tg_data(init_data):
         return {"ok": False, "msg": "Session Expired!"}
         
-    OWNER_ID = int(os.getenv("ADMIN_ID", "0"))
-    is_admin = (uid == OWNER_ID)
-    if not is_admin:
-        admin_doc = await db.admins.find_one({"user_id": uid})
-        if admin_doc:
-            is_admin = True
-            
-    if not is_admin:
+    if uid not in admin_cache:
         return {"ok": False, "msg": "Unauthorized!"}
         
     await db.upcoming_custom.delete_one({"_id": ObjectId(movie_id)})

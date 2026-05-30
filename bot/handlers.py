@@ -412,26 +412,83 @@ async def broadcast_prep(m: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_bcast)
     await m.answer("📢 যে মেসেজটি ব্রডকাস্ট করতে চান সেটি পাঠান।\nবাতিল করতে /start দিন।")
 
+# ==========================================
+# 🛑 OPTIMIZED LIVE-PROGRESS BROADCAST CONTROLLER
+# ==========================================
 @dp.message(AdminStates.waiting_for_bcast)
 async def execute_broadcast(m: types.Message, state: FSMContext):
     await state.clear()
-    await m.answer("⏳ ব্রডকাস্ট শুরু হয়েছে...")
+    
+    # ডাটাবেসের মোট ইউজার সংখ্যা কাউন্ট করা হচ্ছে
+    total_users = await db.users.count_documents({})
+    
+    # অ্যাডমিনের কাছে প্রাথমিক স্ট্যাটাস মেসেজ পাঠানো হলো
+    status_msg = await m.answer("⏳ <b>Broadcasting initialized... Preparing to send.</b>", parse_mode="HTML")
+    
     kb = [[types.InlineKeyboardButton(text="🎬 ওপেন মুভি অ্যাপ", web_app=types.WebAppInfo(url=APP_URL))]]
     markup = types.InlineKeyboardMarkup(inline_keyboard=kb)
+    
     success = 0
+    failed = 0
+    total_checked = 0
+    
     async for u in db.users.find():
+        user_id = u['user_id']
+        total_checked += 1
+        
         try:
-            await m.copy_to(chat_id=u['user_id'], reply_markup=markup)
+            # মেসেজটি ইউজারের কাছে কপি করা হচ্ছে
+            await m.copy_to(chat_id=user_id, reply_markup=markup)
             success += 1
-            await asyncio.sleep(0.05)
         except TelegramRetryAfter as e:
+            # যদি টেলিগ্রাম থেকে রেট-লিমিট দেয়, তবে ডাইনামিকালি ওয়েট করে পুনরায় ট্রাই করবে
             await asyncio.sleep(e.retry_after)
             try:
-                await m.copy_to(chat_id=u['user_id'], reply_markup=markup)
+                await m.copy_to(chat_id=user_id, reply_markup=markup)
                 success += 1
-            except Exception: pass
-        except Exception: pass
-    await m.answer(f"✅ সম্পন্ন! সর্বমোট <b>{success}</b> জনকে মেসেজ পাঠানো হয়েছে।", parse_mode="HTML")
+            except Exception:
+                failed += 1
+        except Exception:
+            # যদি ইউজার বটটি ব্লক করে থাকে বা অ্যাকাউন্ট নিষ্ক্রিয় থাকে
+            failed += 1
+        
+        # টেলিগ্রামের এডিট লিমিট (Edit Rate Limit) ঠিক রাখতে প্রতি ৫০ জন ইউজার পর পর অগ্রগতি আপডেট করবে
+        if total_checked % 50 == 0 or total_checked == total_users:
+            percentage = int((total_checked / total_users) * 100)
+            progress_text = (
+                f"📢 <b>Broadcasting in Progress...</b>\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"🟢 <b>Success:</b> <code>{success}</code>\n"
+                f"🔴 <b>Failed/Blocked:</b> <code>{failed}</code>\n"
+                f"👥 <b>Total processed:</b> <code>{total_checked}</code> / <code>{total_users}</code>\n"
+                f"📊 <b>Progress:</b> <code>{percentage}%</code>\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"⏳ <i>Please do not send other commands while broadcasting...</i>"
+            )
+            try:
+                await bot.edit_message_text(
+                    chat_id=m.chat.id, 
+                    message_id=status_msg.message_id, 
+                    text=progress_text, 
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+            
+        # টেলিগ্রাম ফ্লাডিং এড়াতে সামান্য বিরতি
+        await asyncio.sleep(0.04)
+        
+    # ব্রডকাস্ট সম্পন্ন হওয়ার চূড়ান্ত মেসেজ
+    final_text = (
+        f"✅ <b>Broadcasting Completed!</b>\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"🟢 <b>Successfully Sent:</b> <code>{success}</code>\n"
+        f"🔴 <b>Failed (Blocked/Inactive):</b> <code>{failed}</code>\n"
+        f"👥 <b>Total Users in Database:</b> <code>{total_users}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"📢 <i>All active users have received your broadcast!</i>"
+    )
+    await bot.send_message(m.chat.id, final_text, parse_mode="HTML")
 
 @dp.message(Command("addreply"))
 async def add_keyword_reply(m: types.Message):

@@ -1010,36 +1010,71 @@ async def list_movies(page: int = 1, q: str = "", uid: int = 0, cat: str = ""):
         for f in m["files"]: f["is_unlocked"] = f["id"] in unlocked_ids
     return {"movies": movies, "total_pages": total_pages}
 
+# 🛑 AUTO-REPAIRING SYSTEM FOR PORTED THUMBNAILS (BOT-SPECIFIC BYPASS)
 @api_router.get("/api/image/{photo_id}")
 async def get_image(photo_id: str):
     try:
         cache = await db.file_cache.find_one({"photo_id": photo_id})
         now = datetime.datetime.utcnow()
         file_path = None
+        
         if cache and cache.get("expires_at", now) > now: 
             file_path = cache["file_path"]
         else:
             actual_file_id = photo_id
             db_msg_id = None
+            
+            # যদি সরাসরি db_ দিয়ে শুরু হয় (যেমন db_123)
             if photo_id.startswith("db_"):
                 parts = photo_id.split("_")
                 if len(parts) > 1 and parts[1].isdigit():
                     db_msg_id = int(parts[1])
                 movie = await db.movies.find_one({"db_photo_id": db_msg_id})
-                if movie and movie.get("photo_id"): actual_file_id = movie["photo_id"]
+                if movie and movie.get("photo_id"): 
+                    actual_file_id = movie["photo_id"]
+            
             try:
+                # ১. প্রথমে সরাসরি ফাইল আইডি দিয়ে ইমেজ ফেচ করার চেষ্টা করব
                 file_path = (await bot.get_file(actual_file_id)).file_path
             except Exception:
-                if db_msg_id and DB_CHANNEL_ID:
+                # ২. যদি এরর আসে (অর্থাৎ ফাইল আইডিটি অন্য বটের হওয়ায় ইনভ্যালিড), 
+                # তবে ডাটাবেস থেকে সেই মুভিটি খুঁজে বের করে চ্যানেলের db_photo_id দিয়ে অটো-রিপেয়ার করব!
+                movie = await db.movies.find_one({
+                    "$or": [
+                        {"photo_id": photo_id},
+                        {"db_photo_id": db_msg_id} if db_msg_id else {}
+                    ]
+                })
+                
+                if movie and movie.get("db_photo_id") and DB_CHANNEL_ID:
                     try:
-                        copied = await bot.copy_message(chat_id=DB_CHANNEL_ID, from_chat_id=DB_CHANNEL_ID, message_id=db_msg_id)
+                        db_msg_id = movie["db_photo_id"]
+                        
+                        # নতুন বটের টোকেন দিয়ে ছবিটিকে চ্যানেলে কপি করে নতুন ভ্যালিড file_id জেনারেট করা হচ্ছে
+                        copied = await bot.copy_message(
+                            chat_id=DB_CHANNEL_ID, 
+                            from_chat_id=DB_CHANNEL_ID, 
+                            message_id=db_msg_id
+                        )
                         new_photo_id = copied.photo[-1].file_id
                         await bot.delete_message(chat_id=DB_CHANNEL_ID, message_id=copied.message_id)
-                        await db.movies.update_many({"db_photo_id": db_msg_id}, {"$set": {"photo_id": new_photo_id}})
+                        
+                        # ডাটাবেসে নতুন বটের সচল file_id টি সেভ করে দেওয়া হলো
+                        await db.movies.update_many(
+                            {"db_photo_id": db_msg_id}, 
+                            {"$set": {"photo_id": new_photo_id}}
+                        )
+                        
                         file_path = (await bot.get_file(new_photo_id)).file_path
                     except Exception: pass
-            if file_path:
-                await db.file_cache.update_one({"photo_id": photo_id}, {"$set": {"file_path": file_path, "expires_at": now + datetime.timedelta(minutes=50)}}, upsert=True)
+                    
+        if file_path:
+            await db.file_cache.update_one(
+                {"photo_id": photo_id}, 
+                {"$set": {"file_path": file_path, "expires_at": now + datetime.timedelta(minutes=50)}}, 
+                upsert=True
+            )
+            
         if not file_path: return {"error": "not found"}
         file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
         async def stream_image():

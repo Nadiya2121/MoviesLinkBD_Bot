@@ -49,7 +49,7 @@ class AdminStates(StatesGroup):
 async def start_cmd(message: types.Message, state: FSMContext):
     uid = message.from_user.id
     if uid in banned_cache: 
-        return await message.answer("🚫 <b>আপনাকে ব্যান করা হয়েছে।</b>", parse_mode="HTML")
+        return await message.answer("🚫 <b>You are banned from using this bot.</b>", parse_mode="HTML")
         
     await state.clear()
     now = datetime.datetime.utcnow()
@@ -81,74 +81,70 @@ async def start_cmd(message: types.Message, state: FSMContext):
     coins = user.get("coins", 0)
     vip_status = "👑 Premium VIP" if is_vip else "⚡ Free User"
     
-    # প্রিমিয়াম বাটন লেআউট
+    # প্রিমিয়াম বাটন লেআউট (সম্পূর্ণ নিচে নিচে এবং স্ট্যান্ডার্ড ইংরেজিতে)
     kb = [
-        [types.InlineKeyboardButton(text="🎬 Open Movie App (অ্যাপ খুলুন)", web_app=types.WebAppInfo(url=APP_URL))],
-        [
-            types.InlineKeyboardButton(text="কিভাবে ডাউনলোড করবেন ❓", url=TUTORIAL_LINK),
-            types.InlineKeyboardButton(text="মুভি রিকোয়েস্ট ♻️", url=REQUEST_LINK)
-        ],
-        [types.InlineKeyboardButton(text="🎁 Refer & Earn (ফ্রি Gems)", callback_data="refer_info_start")]
+        [types.InlineKeyboardButton(text="🎬 WATCH NOW 🎬", web_app=types.WebAppInfo(url=APP_URL))],
+        [types.InlineKeyboardButton(text="📖 HOW TO DOWNLOAD", url=TUTORIAL_LINK)],
+        [types.InlineKeyboardButton(text="♻️ REQUEST MOVIE", url=REQUEST_LINK)],
+        [types.InlineKeyboardButton(text="🎁 REFER & EARN", callback_data="refer_info_start")]
     ]
     markup = types.InlineKeyboardMarkup(inline_keyboard=kb)
     
-    # ১৬:৯ রেশিওর ওয়েলকাম ইমেজের লিংক (আপনার ছবির লিংক বা ফাইল আইডি দিয়ে পরিবর্তন করতে পারেন)
+    # ১৬:৯ রেশিওর ওয়েলকাম ব্যানার ইমেজ
     WELCOME_BANNER = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1025&auto=format&fit=crop"
 
     if uid in admin_cache:
         # অ্যাডমিনদের জন্য মেসেজ
         text = (
-            "👋 <b>হ্যালো অ্যাডমিন!</b>\n\n"
-            "⚙️ <b>কমান্ড লিস্ট:</b>\n"
-            "🔸 অটো আপলোড: <code>/autoupload on/off</code>\n"
-            "🔸 অ্যাডমিন প্যানেল: <code>/addadmin ID</code> | <code>/deladmin ID</code> | <code>/adminlist</code>\n"
-            "🔸 ডাইরেক্ট লিংক: <code>/addlink লিংক</code> | <code>/dellink লিংক</code> | <code>/seelinks</code>\n"
-            "🔸 সাপোর্ট লিংক: <code>/setsupport লিংক</code>\n"
-            "🔸 পেমেন্ট নাম্বার: <code>/setbkash নাম্বার</code> | <code>/setnagad নাম্বার</code>\n"
-            "🔸 প্রোটেকশন: <code>/protect on/off</code> | অটো-ডিলিট: <code>/settime [মিনিট]</code>\n"
-            "🔸 অ্যাড টাইম: <code>/setadtime [সেকেন্ড]</code>\n" 
-            "🔸 স্ট্যাটাস: <code>/stats</code> | ব্রডকাস্ট: <code>/cast</code>\n"
-            "🔸 মুভি ডিলিট: <code>/delmovie মুভির নাম</code> | <code>/delallmovies</code>\n"
-            "🔸 ব্যান: <code>/ban ID</code> | আনব্যান: <code>/unban ID</code>\n"
-            "🔸 VIP দিন: <code>/addvip ID দিন</code> | VIP বাতিল: <code>/removevip ID</code>\n"
-            "🔸 পয়েন্ট দিন: <code>/addcoin ID পরিমাণ</code> | পয়েন্ট কাটুন: <code>/removecoin ID পরিমাণ</code>\n\n"
-            f"🌐 <b>ওয়েব অ্যাডমিন প্যানেল:</b> <a href='{APP_URL}/admin'>এখানে ক্লিক করুন</a>\n"
-            "<i>লগিন: admin / admin123</i>\n\n"
-            "📥 <b>মুভি অ্যাড করতে প্রথমে ভিডিও বা ডকুমেন্ট ফাইল পাঠান।</b>"
+            "👋 <b>Hello Admin!</b>\n\n"
+            "⚙️ <b>Admin Command Menu:</b>\n"
+            "🔸 Auto Upload: <code>/autoupload on/off</code>\n"
+            "🔸 Manage Admin: <code>/addadmin ID</code> | <code>/deladmin ID</code> | <code>/adminlist</code>\n"
+            "🔸 Direct Links: <code>/addlink URL</code> | <code>/dellink URL</code> | <code>/seelinks</code>\n"
+            "🔸 Support Link: <code>/setsupport URL</code>\n"
+            "🔸 Payment: <code>/setbkash Number</code> | <code>/setnagad Number</code>\n"
+            "🔸 Protection: <code>/protect on/off</code> | <code>/settime [minutes]</code>\n"
+            "🔸 Ad Settings: <code>/setadtime [seconds]</code>\n" 
+            "🔸 Stats & Broadcast: <code>/stats</code> | <code>/cast</code>\n"
+            "🔸 Delete Movie: <code>/delmovie title</code> | <code>/delallmovies</code>\n"
+            "🔸 User Controls: <code>/ban ID</code> | <code>/unban ID</code>\n"
+            "🔸 Points & VIP: <code>/addcoin ID amount</code> | <code>/addvip ID days</code>\n\n"
+            f"🌐 <b>Web Admin Panel:</b> <a href='{APP_URL}/admin'>Open Dashboard</a>\n\n"
+            "📥 <i>To upload a movie, simply send/forward any video or document here.</i>"
         )
         try:
             await message.answer_photo(photo=WELCOME_BANNER, caption=text, reply_markup=markup, parse_mode="HTML")
         except Exception:
             await message.answer(text, reply_markup=markup, parse_mode="HTML")
     else:
-        # সাধারণ ইউজারদের জন্য প্রিমিয়াম ডাইনামিক প্রোফাইল মেসেজ
+        # সাধারণ ইউজারদের জন্য প্রিমিয়াম কার্ড মেসেজ
         user_name = message.from_user.first_name or "User"
         text = (
             f"👋 <b>Welcome, {user_name}!</b>\n"
-            f"আমাদের মুভি ও ওয়েব সিরিজ মিনি-অ্যাপ বটে আপনাকে স্বাগতম।\n\n"
-            f"📊 <b>আপনার প্রোফাইল তথ্য:</b>\n"
+            f"Welcome to MovieZone BD - Cinema in your pocket.\n\n"
+            f"📊 <b>YOUR PROFILE STATS:</b>\n"
             f"━━━━━━━━━━━━━━━━━━\n"
-            f"👤 <b>নাম:</b> {user_name}\n"
-            f"🆔 <b>ইউজার আইডি:</b> <code>{uid}</code>\n"
-            f"💎 <b>আপনার Gems:</b> <code>{coins} Gems</code>\n"
-            f"👑 <b>মেম্বারশিপ:</b> <b>{vip_status}</b>\n"
+            f"👤 <b>Account:</b> {user_name}\n"
+            f"🆔 <b>User ID:</b> <code>{uid}</code>\n"
+            f"💎 <b>My Gems:</b> <code>{coins} Gems</code>\n"
+            f"👑 <b>Membership:</b> <b>{vip_status}</b>\n"
             f"━━━━━━━━━━━━━━━━━━\n\n"
-            f"🍿 <i>নিচের বাটনে ক্লিক করে সরাসরি আমাদের মিনি-অ্যাপ থেকে ১ ক্লিকে হাই-স্পিডে মুভি এবং ওয়েব সিরিজ ডাউনলোড করুন বা সরাসরি বটেই প্লে করুন!</i>"
+            f"🍿 <i>Click the <b>'WATCH NOW'</b> button below to open the mini-app and download or stream movies instantly!</i>"
         )
         try:
             await message.answer_photo(photo=WELCOME_BANNER, caption=text, reply_markup=markup, parse_mode="HTML")
         except Exception:
             await message.answer(text, reply_markup=markup, parse_mode="HTML")
 
-# রেফারেল বাটন ইনফো হ্যান্ডলার
+# রেফারেল ইনফো বাটন হ্যান্ডলার (Callback)
 @dp.callback_query(F.data == "refer_info_start")
 async def refer_info_start_cb(c: types.CallbackQuery):
     ref_link = f"https://t.me/{BOT_USERNAME}?start=ref_{c.from_user.id}"
     text = (
-        "🎁 <b>Refer & Earn (ফ্রি Gems সংগ্রহ করুন):</b>\n\n"
-        "আপনার বন্ধুদের সাথে নিচের লিংকটি শেয়ার করুন। আপনার লিংকে ক্লিক করে কেউ বটটি স্টার্ট করলেই আপনি পাবেন সম্পূর্ণ ফ্রিতে <b>১০ Gems</b>!\n\n"
-        f"🔗 <b>আপনার ইনভাইট লিংক:</b>\n<code>{ref_link}</code>\n\n"
-        "<i>পয়েন্ট জমিয়ে আপনি বিজ্ঞাপন ছাড়াই সরাসরি প্রিমিয়াম মেম্বারশিপ আনলক করতে পারবেন।</i>"
+        "🎁 <b>Refer & Earn Gems:</b>\n\n"
+        "Share your unique invitation link with friends. Whenever someone starts the bot using your link, you will receive <b>10 Gems</b> instantly!\n\n"
+        f"🔗 <b>Your Invitation Link:</b>\n<code>{ref_link}</code>\n\n"
+        "<i>Use points to unlock Premium VIP membership for an ad-free experience!</i>"
     )
     await c.message.answer(text, parse_mode="HTML")
     await c.answer()

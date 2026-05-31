@@ -101,7 +101,7 @@ async def start_cmd(message: types.Message, state: FSMContext):
     markup = types.InlineKeyboardMarkup(inline_keyboard=kb)
     
     # ১৬:৯ রেশিওর ওয়েলকাম ব্যানার ইমেজ
-    WELCOME_BANNER = "https://files.catbox.moe/abd55m.jpg"
+    WELCOME_BANNER = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1025&auto=format&fit=crop"
 
     if uid in admin_cache:
         # অ্যাডমিনদের জন্য মেসেজ
@@ -710,7 +710,7 @@ async def forward_to_admin(m: types.Message):
                 
                 if user_text:
                     try:
-                        reply_text = await get_smart_reply(user_text, m.from_user.first_name or "User", db, user_id=m.from_user.id)
+                        reply_text = await get_smart_reply(user_text, m.from_user.first_name or "User", db, user_id=m.from_user.id, save_history=True)
                     except Exception as ai_err:
                         reply_text = "হ্যালো! আপনার মেসেজটি আমরা পেয়েছি। আমাদের কোনো একজন অ্যাডমিন জলদি রিপ্লাই দেবেন।"
                 else:
@@ -805,7 +805,7 @@ async def group_request_responder(m: types.Message):
         escaped_name = html.escape(m.from_user.first_name or "User")
         text = (
             f"🍿 <b>Hey {escaped_name}!</b>\n\n"
-            f"আপনি যে মুভিটি খুঁজছেন—'<b>{found_movie['_id']}</b>' "
+            f"আপনি যে মুভিটি খুঁজছেন—'<b>{found_movie['title']}</b>' "
             f"সেটি আমাদের মিনি-অ্যাপে অলরেডি আপলোড করা আছে! 😍\n\n"
             f"👇 নিচের বাটনে ক্লিক করে সরাসরি আমাদের বটে গিয়ে দেখে নিন বা ডাউনলোড করুন।"
         )
@@ -940,7 +940,7 @@ async def finalize_new_episode(m: types.Message, state: FSMContext):
             ]
             markup = types.InlineKeyboardMarkup(inline_keyboard=kb)
             cat_display = ", ".join(categories) if categories else "N/A"
-            caption = (f"🔥 <b>নতুন এপিসোড যুক্ত হয়েছে!</b>\n\n📌 <b>টাইটেল:</b> {title}\n🏷 <b>এপিসোড/কোয়ালিটি:</b> {quality}\n🎭 <b>ক্যাটাগরি:</b> {cat_display}\n\n👇 <i>বট থেকে ভিডিওটি পেতে নিচের বাটনে ক্লিক করুন।</i>")
+            caption = (f"🔥 <b>নতুন এপিসোড যুক্ত হয়েছে!</b>\n\n📌 <b>টাইটেল:</b> {title}\n🏷 <b>এপিসোড/কোয়ালিটি:</b> {quality}\n🎭 <b>ক্যাটাগরি:</b> {cat_display}\n\n👇 <i>বট থেকে...</i>")
             await bot.send_photo(chat_id=CHANNEL_ID, photo=photo_id, caption=caption, parse_mode="HTML", reply_markup=markup)
         except Exception: pass
 

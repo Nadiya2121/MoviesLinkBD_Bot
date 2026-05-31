@@ -62,6 +62,10 @@ async def start():
     try:
         await init_db()
         logger.info("Database initialized successfully.")
+        
+        # 🧹 টোকেন পরিবর্তনের পর পুরোনো ইমেজ ক্যাশ সম্পূর্ণ সাফ করার অটো-হিলিং স্ক্রিপ্ট
+        await db.file_cache.delete_many({})
+        logger.info("Old image file cache cleared and reset successfully.")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
         

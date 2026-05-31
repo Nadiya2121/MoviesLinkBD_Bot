@@ -12,7 +12,7 @@ import copy
 from config import (
     db, bot, OWNER_ID, BOT_USERNAME, DB_CHANNEL_ID,
     admin_cache, banned_cache, trending_cache, list_cache, category_cache,
-    clear_app_cache, TOKEN, logger
+    clear_app_cache, TOKEN, logger, load_keyword_replies
 )
 from helpers import validate_tg_data, verify_admin, format_views
 from html_template import HTML_CODE

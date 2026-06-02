@@ -12,7 +12,7 @@ import copy
 from config import (
     db, bot, OWNER_ID, BOT_USERNAME, DB_CHANNEL_ID,
     admin_cache, banned_cache, trending_cache, list_cache, category_cache,
-    clear_app_cache, TOKEN, logger, load_keyword_replies
+    clear_app_cache, TOKEN, logger
 )
 from helpers import validate_tg_data, verify_admin, format_views
 from html_template import HTML_CODE
@@ -63,6 +63,8 @@ class AdminAdModel(BaseModel):
 class WatchlistModel(BaseModel):
     uid: int
     title: str
+    rating: int
+    review: str
     initData: str
 
 class ReviewModel(BaseModel):
@@ -187,15 +189,15 @@ async def web_admin_panel(auth: bool = Depends(verify_admin)):
                     <div class="neon-card rounded-2xl p-6 shadow-xl col-span-1">
                         <h2 class="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> Active Statistics</h2>
                         <div class="grid grid-cols-1 gap-4">
-                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-850">
                                 <p class="text-xs text-gray-400 font-bold uppercase">Active Today (DAU)</p>
                                 <h3 id="analyticsDau" class="text-2xl font-bold text-green-400">0</h3>
                             </div>
-                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-850">
                                 <p class="text-xs text-gray-400 font-bold uppercase">Active Weekly (WAU)</p>
                                 <h3 id="analyticsWau" class="text-2xl font-bold text-blue-400">0</h3>
                             </div>
-                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                            <div class="bg-gray-900/50 p-4 rounded-xl border border-gray-850">
                                 <p class="text-xs text-gray-400 font-bold uppercase">Total User Reviews</p>
                                 <h3 id="analyticsReviews" class="text-2xl font-bold text-yellow-400">0</h3>
                             </div>
@@ -1082,6 +1084,11 @@ async def get_image(photo_id: str):
         async def stream_image():
             async with aiohttp.ClientSession() as session:
                 async with session.get(file_url) as resp:
+                    if resp.status != 200:
+                        # যদি টেলিগ্রাম ৪০৪ এরর দেয় (অর্থাৎ ফাইল পাথ এক্সপায়ার হয়ে গেছে), তবে ক্যাশ ডিলিট করে দেব
+                        await db.file_cache.delete_one({"photo_id": photo_id})
+                        yield b""
+                        return
                     async for chunk in resp.content.iter_chunked(1024): yield chunk
         return StreamingResponse(stream_image(), media_type="image/jpeg")
     except Exception as e: 

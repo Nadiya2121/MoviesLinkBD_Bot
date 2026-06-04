@@ -3,6 +3,7 @@ import datetime
 import json
 import random
 import aiohttp
+import html
 from fastapi import APIRouter, Depends, Body, HTTPException, status
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
@@ -63,8 +64,6 @@ class AdminAdModel(BaseModel):
 class WatchlistModel(BaseModel):
     uid: int
     title: str
-    rating: int
-    review: str
     initData: str
 
 class ReviewModel(BaseModel):
@@ -252,7 +251,7 @@ async def web_admin_panel(auth: bool = Depends(verify_admin)):
                                 </tr>
                             </thead>
                             <tbody id="userTableBody">
-                                <tr><td colspan="5" class="text-center p-8 text-gray-500">Search for a user by name or UID to begin managing...</td></tr>
+                                <tr><td colspan="5" class="text-center p-8 text-gray-400">Search for a user by name or UID to begin managing...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1103,6 +1102,9 @@ async def increment_movie_view(d: ViewRequestModel):
     except Exception: pass
     return {"ok": True}
 
+# ==========================================
+# 🛑 DYNAMIC PREMIUM MOVIE DELIVERY & REFERRAL SYSTEM
+# ==========================================
 @api_router.post("/api/send")
 async def send_file(d: SendRequestModel):
     if d.userId == 0 or not validate_tg_data(d.initData): return {"ok": False}
@@ -1112,12 +1114,28 @@ async def send_file(d: SendRequestModel):
             now = datetime.datetime.utcnow()
             user = await db.users.find_one({"user_id": d.userId})
             is_vip = user and user.get("vip_until", now) > now
+            
             time_cfg = await db.settings.find_one({"id": "del_time"})
             del_minutes = time_cfg['minutes'] if time_cfg else 60
             protect_cfg = await db.settings.find_one({"id": "protect_content"})
             is_protected = protect_cfg['status'] if protect_cfg else True
-            caption = f"🎥 <b>{m['title']} [{m.get('quality', 'HD')}]</b>\n\n📥 Join: @TGLinkBase"
+            
+            # প্রিমিয়াম এআই ডাইনামিক মেসেজ লেআউট (টপ-লেভেল ভাইরালিটি)
+            escaped_name = html.escape(user.get("first_name", "User") if user else "User")
+            m_title = html.escape(m['title'])
+            ref_link = f"https://t.me/{BOT_USERNAME}?start=ref_{d.userId}"
+            
+            # মায়ার ৩টি অত্যন্ত আকর্ষণীয় মিষ্টি বাংলা ডেলিভারি টেমপ্লেট
+            delivery_wishes = [
+                f"🍿 <b>Hey {escaped_name}!</b> Here is your movie '<b>{m_title}</b>' 🎬\n\nমুভিটা দেখার সময় বন্ধুদের ভুলো না কিন্তু! নিচে তোমার স্পেশাল শেয়ার লিংকটি দিলাম, বন্ধুদের সাথে শেয়ার করলেই পেয়ে যাবে ফ্রি Gems। একসাথে দেখার মজাই আলাদা! 😍\n\n🔗 <b>Your Invite Link:</b> <code>{ref_link}</code>",
+                f"🍿 <b>আরে {escaped_name}!</b> তোমার কাঙ্ক্ষিত মুভি '<b>{m_title}</b>' নিয়ে আমি হাজির! 🎬\n\nমুভিটা কেমন লাগলো আমাকে জানাতে ভুলো না কিন্তু! আর হ্যাঁ, নিচের ইনভাইট লিংকটি বন্ধুদের পাঠিয়ে ফ্রিতে Gems নিয়ে নাও, একসাথে দেখলে আনন্দ দ্বিগুণ হবে! 😉❤️\n\n🔗 <b>Your Invite Link:</b> <code>{ref_link}</code>",
+                f"🍿 <b>রিল্যাক্স {escaped_name}!</b> তোমার পছন্দের মুভি '<b>{m_title}</b>' এসে গেছে! 🎬\n\nপপকর্ন নিয়ে রেডি তো? মুভিটা বন্ধুদের সাথে শেয়ার করতে চাইলে নিচের লিংকটি কপি করে পাঠিয়ে দাও। শেয়ার করলেই পাবে ফ্রিতে Gems! 🍿✨\n\n🔗 <b>Your Invite Link:</b> <code>{ref_link}</code>"
+            ]
+            maya_wish = random.choice(delivery_wishes)
+            
+            caption = f"{maya_wish}\n\n📥 Join: @TGLinkBase"
             if not is_vip: caption += f"\n\n⏳ <i>সতর্কতা: সিকিউরিটির জন্য এই ভিডিওটি <b>{del_minutes} মিনিট</b> পর অটোমেটিক ডিলিট হয়ে যাবে!</i>"
+            
             db_file_id = m.get("db_file_id")
             sent_msg = None
             if db_file_id and DB_CHANNEL_ID:
@@ -1125,6 +1143,7 @@ async def send_file(d: SendRequestModel):
             else:
                 if m.get("file_type") == "video": sent_msg = await bot.send_video(d.userId, m['file_id'], caption=caption, parse_mode="HTML", protect_content=is_protected)
                 else: sent_msg = await bot.send_document(d.userId, m['file_id'], caption=caption, parse_mode="HTML", protect_content=is_protected)
+            
             await db.user_unlocks.update_one({"user_id": d.userId, "movie_id": d.movieId}, {"$set": {"unlocked_at": now}}, upsert=True)
             if sent_msg and not is_vip: await db.auto_delete.insert_one({"chat_id": d.userId, "message_id": sent_msg.message_id, "delete_at": now + datetime.timedelta(minutes=del_minutes)})
     except Exception: pass
@@ -1230,11 +1249,20 @@ async def daily_checkin(d: UserActionModel):
     await db.users.update_one({"user_id": d.uid}, {"$set": {"last_check_in": now}, "$inc": {"coins": 5}})
     return {"ok": True, "coins": user.get("coins", 0) + 5}
 
+# 🛑 UPDATE: মায়ার মিষ্টি ধমক ও এআই সুইট ওয়ার্নিং ইন্টিগ্রেটেড
 @api_router.post("/api/gamification/spin")
 async def spin_wheel(d: UserActionModel):
     if not validate_tg_data(d.initData): return {"ok": False}
     user = await db.users.find_one({"user_id": d.uid})
-    if not user or user.get("coins", 0) < 5: return {"ok": False, "msg": "Not enough points! Need 5 points to spin."}
+    
+    if not user or user.get("coins", 0) < 5: 
+        user_name = user.get("first_name", "User") if user else "User"
+        # Gems কম থাকলে মায়ার মিষ্টি ধমক মেসেজ পপ-আপ
+        return {
+            "ok": False, 
+            "msg": f"আরে {user_name}! 🥺 স্পিন করতে ৫ Gems প্রয়োজন। তোমার ব্যালেন্স কম আছে। বন্ধুদের ইনভাইট লিংক শেয়ার করে Gems বাড়িয়ে নাও, জলদি যাও! 😉✨"
+        }
+        
     rewards = [{"type": "points", "amount": 0, "weight": 35}, {"type": "points", "amount": 2, "weight": 25}, {"type": "points", "amount": 5, "weight": 20}, {"type": "points", "amount": 10, "weight": 12}, {"type": "points", "amount": 20, "weight": 5}, {"type": "points", "amount": 50, "weight": 2}, {"type": "vip", "days": 1, "weight": 1}]
     choices = []
     for r in rewards: choices.extend([r] * r["weight"])
